@@ -1,0 +1,23 @@
+# .NET build output
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+
+# IDE and user-specific files
+.vs/
+.idea/
+.agents/
+.codex/
+*.user
+*.suo
+*.rsuser
+
+# Logs, crash dumps, and generated packages
+*.log
+*.dmp
+*.zip
+
+# OS metadata
+.DS_Store
+Thumbs.db
