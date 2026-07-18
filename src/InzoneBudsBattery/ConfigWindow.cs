@@ -101,7 +101,7 @@ internal sealed class ConfigWindow : Window
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip("Windows HID APIで現在のInput Report取得を試します。デバイス側が対応しない場合は自発レポートの待受を継続します。");
+            ImGui.SetTooltip("Sony HCIの電池GET要求を送信します。応答しない場合も自発レポートの待受を継続します。");
         }
 
         DrawSection("残量警告");
@@ -132,7 +132,7 @@ internal sealed class ConfigWindow : Window
         ImGui.TextUnformatted($"接続: {(state.IsTransmitterConnected ? "接続済み" : "未接続")}");
         ImGui.TextUnformatted($"残量: L {Format(state.LeftPercent)} / R {Format(state.RightPercent)} / Case {Format(state.CasePercent)}");
         ImGui.TextUnformatted($"チェックサム: {FormatChecksum(state.ChecksumValid)}");
-        ImGui.TextUnformatted($"強制更新: {FormatRefreshSupport(state.PeriodicRefreshSupported)}");
+        ImGui.TextUnformatted($"定期更新: {FormatRefreshSupport(state.PeriodicRefreshSupported)}");
         if (state.LastUpdatedAt is { } updatedAt)
         {
             ImGui.TextUnformatted($"最終受信: {updatedAt:yyyy-MM-dd HH:mm:ss zzz}");
@@ -191,8 +191,8 @@ internal sealed class ConfigWindow : Window
 
     private static string FormatRefreshSupport(bool? value) => value switch
     {
-        true => "利用可能",
-        false => "電池レポート非対応（自発レポート待受中）",
-        null => "未試行",
+        true => "電池GET応答あり",
+        false => "電池GET応答なし（自発レポート待受中）",
+        null => "電池GET応答待ち",
     };
 }

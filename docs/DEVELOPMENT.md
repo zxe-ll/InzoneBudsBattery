@@ -40,10 +40,14 @@ src\InzoneBudsBattery\bin\Release\InzoneBudsBattery\latest.zip
 
 - バッテリーレポートは64バイトInput Reportを持つ`col03`から受信する。
 - レポートヘッダーは`02 12 04`。
-- 右、左、ケースの残量はそれぞれbyte 14、16、18。
+- 左、右、ケースの残量はそれぞれbyte 14、16、18。
+- 片耳使用時の未接続側は`0xFF`で、残量なし（`null`）として扱う。
 - チェックサムは`sum(byte[5] ... byte[18]) mod 256`をbyte 19と比較する。
 - HID読み取りはDalamudの描画スレッド外で継続する。
 - HIDハンドルは共有アクセスで開き、INZONE Hubとの共存を維持する。
+- 接続直後と設定間隔ごとにReport ID `02`のSony HCI電池GET要求を送信する。
+- GET要求へ応答しない場合や書込み共有オープンに失敗した場合は、Input Reportの受動待受へ戻る。
+- 再接続やアンロードとGET送信が競合して発生する`ObjectDisposedException`は正常なキャンセルとして扱う。
 - 切断時は列挙からやり直し、アンロード時は読み取りをキャンセルしてハンドルを破棄する。
 
 ## ネイティブHID実装
@@ -52,9 +56,11 @@ src\InzoneBudsBattery\bin\Release\InzoneBudsBattery\latest.zip
 
 バージョン0.2.0.0以降はHidSharpを削除し、`WindowsHid.cs`からWindows APIを直接呼び出します。0.2.1.0以降は、アンロードや再接続に伴う正常な非同期読み取りキャンセルもエラーとして記録しません。
 
+Sony HCI電池GETのフレーム形式は、MIT Licenseで公開されている[LINZONE HubのAiroha実装](https://pkg.go.dev/github.com/patyhank/linzone-hub/internal/protocol/airoha)を参考にし、Windows実機の応答で確認しています。
+
 ## 検証ツール
 
 - `probes/InzoneBudsHidProbe`: HidSharpを使用した初期プロトコル調査用。プラグイン本体からは独立しています。
-- `probes/NativeHidSmokeTest`: プラグインと同じ`WindowsHid.cs`をリンクして、列挙、共有オープン、`HidD_GetInputReport`を確認します。
+- `probes/NativeHidSmokeTest`: プラグインと同じネイティブHID実装をリンクして、列挙、共有Read/Writeオープン、Sony HCI電池GET、`HidD_GetInputReport`を確認します。
 
 検証済みの結果は[VALIDATION.md](VALIDATION.md)に記録しています。

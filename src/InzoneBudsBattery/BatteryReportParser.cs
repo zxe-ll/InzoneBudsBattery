@@ -21,14 +21,18 @@ internal static class BatteryReportParser
             return false;
         }
 
-        var right = (int)report[14];
-        var left = (int)report[16];
-        var batteryCase = (int)report[18];
-        if (left > 100 || right > 100 || batteryCase > 100)
+        var leftRaw = report[14];
+        var rightRaw = report[16];
+        var caseRaw = report[18];
+        if (IsInvalidPercentage(rightRaw) || IsInvalidPercentage(leftRaw) || IsInvalidPercentage(caseRaw))
         {
-            validationError = $"Invalid battery values: L={left}, R={right}, Case={batteryCase}.";
+            validationError = $"Invalid battery values: L={leftRaw}, R={rightRaw}, Case={caseRaw}.";
             return false;
         }
+
+        var right = ToPercentage(rightRaw);
+        var left = ToPercentage(leftRaw);
+        var batteryCase = ToPercentage(caseRaw);
 
         var checksumSum = 0;
         for (var index = 5; index < 19; index++)
@@ -49,4 +53,8 @@ internal static class BatteryReportParser
         };
         return true;
     }
+
+    private static bool IsInvalidPercentage(byte value) => value > 100 && value != byte.MaxValue;
+
+    private static int? ToPercentage(byte value) => value == byte.MaxValue ? null : value;
 }
