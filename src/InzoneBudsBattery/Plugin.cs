@@ -25,8 +25,6 @@ public sealed class Plugin : IDalamudPlugin
     private readonly InzoneBatteryService _batteryService;
     private readonly OverlayWindow _overlayWindow;
     private readonly ConfigWindow _configWindow;
-    private DateTimeOffset? _lastProcessedReport;
-    private bool _criticalNotificationLatched;
     private bool _disposed;
 
     public Plugin(
@@ -94,7 +92,6 @@ public sealed class Plugin : IDalamudPlugin
     private void DrawUi()
     {
         var state = _batteryService.Current;
-        ProcessCriticalNotification(state);
         UpdateDtr(state);
 
         _pluginInterface.UiBuilder.DisableUserUiHide = _configuration.ShowWhenGameUiHidden;
@@ -105,42 +102,6 @@ public sealed class Plugin : IDalamudPlugin
                                 && (!_configuration.HideWhenDisconnected || state.IsTransmitterConnected);
         _overlayWindow.IsOpen = shouldShowOverlay;
         _windowSystem.Draw();
-    }
-
-    private void ProcessCriticalNotification(BatteryState state)
-    {
-        if (state.LastUpdatedAt is null || state.LastUpdatedAt == _lastProcessedReport)
-        {
-            return;
-        }
-
-        _lastProcessedReport = state.LastUpdatedAt;
-        var minimum = state.MinimumEarbudPercent;
-        if (minimum is null)
-        {
-            return;
-        }
-
-        if (minimum > _configuration.CriticalBatteryThreshold)
-        {
-            _criticalNotificationLatched = false;
-            return;
-        }
-
-        if (_criticalNotificationLatched || !_configuration.EnableCriticalNotification)
-        {
-            return;
-        }
-
-        _criticalNotificationLatched = true;
-        _notificationManager.AddNotification(
-            new Notification
-            {
-                Title = "INZONE Buds Battery",
-                Content = $"イヤホンの残量が{minimum}%です。",
-                Type = NotificationType.Warning,
-                RespectUiHidden = false,
-            });
     }
 
     private void UpdateDtr(BatteryState state)

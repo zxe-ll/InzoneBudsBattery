@@ -50,8 +50,6 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool HideWhenDisconnected { get; set; }
 
-    public bool EnableCriticalNotification { get; set; } = true;
-
     public bool DtrEnabled { get; set; }
 
     public bool DtrShowDetails { get; set; }
