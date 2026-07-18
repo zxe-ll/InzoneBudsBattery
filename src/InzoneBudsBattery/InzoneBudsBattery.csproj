@@ -19,6 +19,7 @@
     <MinimumDalamudVersion>15.0.0</MinimumDalamudVersion>
     <Punchline>INZONE Budsの左右・ケース残量をゲーム内に表示します。</Punchline>
     <Description>Sony INZONE Buds（WF-G700N）のUSBトランシッターからバッテリー残量を取得し、オーバーレイとDTRバーへ表示します。</Description>
+    <IconUrl>https://raw.githubusercontent.com/zxe-ll/InzoneBudsBattery/refs/heads/main/images/icon.png</IconUrl>
     <Tags>battery;hardware;inzone;sony</Tags>
     <ApplicableVersion>any</ApplicableVersion>
   </PropertyGroup>
