@@ -14,8 +14,8 @@
     <Name>INZONE Buds Battery</Name>
     <InternalName>InzoneBudsBattery</InternalName>
     <AssemblyName>InzoneBudsBattery</AssemblyName>
-    <AssemblyVersion>0.2.2.0</AssemblyVersion>
-    <FileVersion>0.2.2.0</FileVersion>
+    <AssemblyVersion>0.2.3.0</AssemblyVersion>
+    <FileVersion>0.2.3.0</FileVersion>
     <MinimumDalamudVersion>15.0.0</MinimumDalamudVersion>
     <Punchline>INZONE Budsの左右・ケース残量をゲーム内に表示します。</Punchline>
     <Description>Sony INZONE Buds（WF-G700N）のUSBトランシッターからバッテリー残量を取得し、オーバーレイとDTRバーへ表示します。</Description>

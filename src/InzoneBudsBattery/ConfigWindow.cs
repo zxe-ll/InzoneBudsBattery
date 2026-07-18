@@ -119,7 +119,10 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
 
-        changed |= Checkbox("危険残量で通知", nameof(Configuration.EnableCriticalNotification));
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("警告しきい値よりも低い値を設定して下さい。");
+        }
 
         DrawSection("DTRバー");
         changed |= Checkbox("DTRバーへ表示", nameof(Configuration.DtrEnabled));
