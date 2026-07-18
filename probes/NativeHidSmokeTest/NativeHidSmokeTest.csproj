@@ -11,6 +11,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\src\InzoneBudsBattery\BatteryReportParser.cs" Link="BatteryReportParser.cs" />
+    <Compile Include="..\..\src\InzoneBudsBattery\BatteryState.cs" Link="BatteryState.cs" />
+    <Compile Include="..\..\src\InzoneBudsBattery\BudsHciProtocol.cs" Link="BudsHciProtocol.cs" />
     <Compile Include="..\..\src\InzoneBudsBattery\WindowsHid.cs" Link="WindowsHid.cs" />
   </ItemGroup>
 

@@ -26,14 +26,16 @@ internal static class ConsoleLog
             Console.WriteLine();
             Console.WriteLine("Battery report received:");
             Console.WriteLine($"Interface: {path}");
-            Console.WriteLine($"Left:  {report.LeftPercent}%");
-            Console.WriteLine($"Right: {report.RightPercent}%");
-            Console.WriteLine($"Case:  {report.CasePercent}%");
+            Console.WriteLine($"Left:  {FormatBattery(report.LeftPercent)}");
+            Console.WriteLine($"Right: {FormatBattery(report.RightPercent)}");
+            Console.WriteLine($"Case:  {FormatBattery(report.CasePercent)}");
             Console.WriteLine($"Checksum: {(report.ChecksumValid ? "match" : "MISMATCH (not rejected)")}");
             Console.WriteLine($"Received: {report.ReceivedAt:yyyy-MM-dd HH:mm:ss zzz}");
             Console.WriteLine();
         }
     }
+
+    private static string FormatBattery(int? value) => value is null ? "--" : $"{value}%";
 
     private static void Write(TextWriter writer, string level, string message)
     {

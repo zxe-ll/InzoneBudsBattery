@@ -4,13 +4,26 @@ using Microsoft.Win32.SafeHandles;
 
 namespace InzoneBudsBattery;
 
-internal sealed record WindowsHidDevice(string DevicePath, int InputReportLength)
+internal sealed record WindowsHidDevice(
+    string DevicePath,
+    int InputReportLength,
+    int OutputReportLength,
+    ushort UsagePage,
+    ushort Usage)
 {
     public FileStream OpenRead()
+        => Open(WindowsHidNative.GenericRead, FileAccess.Read);
+
+    public FileStream OpenReadWrite()
+        => Open(
+            WindowsHidNative.GenericRead | WindowsHidNative.GenericWrite,
+            FileAccess.ReadWrite);
+
+    private FileStream Open(uint desiredAccess, FileAccess access)
     {
         var handle = WindowsHidNative.CreateFile(
             DevicePath,
-            WindowsHidNative.GenericRead,
+            desiredAccess,
             WindowsHidNative.FileShareRead | WindowsHidNative.FileShareWrite,
             IntPtr.Zero,
             WindowsHidNative.OpenExisting,
@@ -24,7 +37,11 @@ internal sealed record WindowsHidDevice(string DevicePath, int InputReportLength
             throw new Win32Exception(error, $"Could not open HID interface: {DevicePath}");
         }
 
-        return new FileStream(handle, FileAccess.Read, Math.Max(64, InputReportLength), isAsync: true);
+        return new FileStream(
+            handle,
+            access,
+            Math.Max(64, Math.Max(InputReportLength, OutputReportLength)),
+            isAsync: true);
     }
 }
 
@@ -107,7 +124,14 @@ internal static class WindowsHid
                         continue;
                     }
 
-                    devices.Add(new WindowsHidDevice(path, GetInputReportLength(path)));
+                    var capabilities = GetCapabilities(path);
+                    devices.Add(
+                        new WindowsHidDevice(
+                            path,
+                            capabilities.InputReportLength,
+                            capabilities.OutputReportLength,
+                            capabilities.UsagePage,
+                            capabilities.Usage));
                 }
                 finally
                 {
@@ -164,7 +188,7 @@ internal static class WindowsHid
         return path.Contains(expected, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static int GetInputReportLength(string path)
+    private static HidCapabilities GetCapabilities(string path)
     {
         using var handle = WindowsHidNative.CreateFile(
             path,
@@ -178,26 +202,40 @@ internal static class WindowsHid
         if (handle.IsInvalid
             || !WindowsHidNative.HidD_GetPreparsedData(handle, out var preparsedData))
         {
-            return 0;
+            return default;
         }
 
         try
         {
-            return WindowsHidNative.HidP_GetCaps(preparsedData, out var capabilities)
-                   == WindowsHidNative.HidpStatusSuccess
-                ? capabilities.InputReportByteLength
-                : 0;
+            if (WindowsHidNative.HidP_GetCaps(preparsedData, out var capabilities)
+                != WindowsHidNative.HidpStatusSuccess)
+            {
+                return default;
+            }
+
+            return new HidCapabilities(
+                capabilities.InputReportByteLength,
+                capabilities.OutputReportByteLength,
+                capabilities.UsagePage,
+                capabilities.Usage);
         }
         finally
         {
             _ = WindowsHidNative.HidD_FreePreparsedData(preparsedData);
         }
     }
+
+    private readonly record struct HidCapabilities(
+        int InputReportLength,
+        int OutputReportLength,
+        ushort UsagePage,
+        ushort Usage);
 }
 
 internal static partial class WindowsHidNative
 {
     public const uint GenericRead = 0x80000000;
+    public const uint GenericWrite = 0x40000000;
     public const uint FileShareRead = 0x00000001;
     public const uint FileShareWrite = 0x00000002;
     public const uint OpenExisting = 3;

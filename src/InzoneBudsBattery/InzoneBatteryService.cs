@@ -7,7 +7,7 @@ internal sealed class InzoneBatteryService : IDisposable
     private const int VendorId = 0x054C;
     private const int ProductId = 0x0EC2;
     private const int ExpectedReportLength = 64;
-    private const byte ReportId = 0x02;
+    private static readonly TimeSpan QueryResponseTimeout = TimeSpan.FromSeconds(3);
 
     private readonly IPluginLog _log;
     private readonly Configuration _configuration;
@@ -16,6 +16,7 @@ internal sealed class InzoneBatteryService : IDisposable
     private readonly Task _worker;
     private BatteryState _state = new();
     private FileStream? _activeStream;
+    private ushort _nextTransactionId = 1;
     private bool _disposed;
 
     public InzoneBatteryService(IPluginLog log, Configuration configuration)
@@ -107,7 +108,13 @@ internal sealed class InzoneBatteryService : IDisposable
             _log.Debug("Found {Count} INZONE HID interfaces.", devices.Count);
             foreach (var device in devices)
             {
-                _log.Debug("INZONE HID interface: length={Length}, path={Path}", device.InputReportLength, device.DevicePath);
+                _log.Debug(
+                    "INZONE HID interface: input={InputLength}, output={OutputLength}, usage={UsagePage:X4}:{Usage:X4}, path={Path}",
+                    device.InputReportLength,
+                    device.OutputReportLength,
+                    device.UsagePage,
+                    device.Usage,
+                    device.DevicePath);
             }
         }
 
@@ -127,30 +134,72 @@ internal sealed class InzoneBatteryService : IDisposable
 
         try
         {
-            stream = device.OpenRead();
+            var vendorQueryAvailable = device.OutputReportLength >= ExpectedReportLength;
+            if (vendorQueryAvailable)
+            {
+                try
+                {
+                    stream = device.OpenReadWrite();
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+                {
+                    vendorQueryAvailable = false;
+                    _log.Warning(
+                        exception,
+                        "Could not open the INZONE HID interface for vendor queries; using passive input only: {Path}",
+                        path);
+                }
+            }
+
+            stream ??= device.OpenRead();
             lock (_streamLock)
             {
                 _activeStream = stream;
             }
 
             SetConnectionState(true, null, path);
-            _log.Info("Opened INZONE HID interface: {Path}", path);
+            if (!vendorQueryAvailable)
+            {
+                MarkPeriodicRefreshUnsupported();
+            }
+
+            _log.Info(
+                "Opened INZONE HID interface ({Mode}): {Path}",
+                vendorQueryAvailable ? "active battery query" : "passive input",
+                path);
 
             var buffer = new byte[Math.Max(ExpectedReportLength, device.InputReportLength)];
             Task<int>? pendingRead = null;
-            var nextRefreshAt = DateTimeOffset.Now + GetRefreshInterval();
+            var nextRefreshAt = DateTimeOffset.Now;
+            DateTimeOffset? queryResponseDeadline = null;
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 pendingRead ??= stream.ReadAsync(buffer.AsMemory(), cancellationToken).AsTask();
-                var refreshDelay = Task.Delay(GetRefreshDelay(nextRefreshAt), cancellationToken);
+                var wakeAt = queryResponseDeadline is { } deadline && deadline < nextRefreshAt
+                    ? deadline
+                    : nextRefreshAt;
+                var refreshDelay = Task.Delay(GetRefreshDelay(wakeAt), cancellationToken);
                 var completed = await Task.WhenAny(pendingRead, refreshDelay).ConfigureAwait(false);
 
                 if (completed == refreshDelay)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    TryPeriodicRefresh(device);
-                    nextRefreshAt = DateTimeOffset.Now + GetRefreshInterval();
+                    var now = DateTimeOffset.Now;
+                    if (queryResponseDeadline is { } responseDeadline && now >= responseDeadline)
+                    {
+                        MarkPeriodicRefreshUnsupported();
+                        queryResponseDeadline = null;
+                    }
+
+                    if (now >= nextRefreshAt)
+                    {
+                        var querySent = vendorQueryAvailable
+                                        && await TryPeriodicRefreshAsync(stream, device, cancellationToken).ConfigureAwait(false);
+                        queryResponseDeadline = querySent ? DateTimeOffset.Now + QueryResponseTimeout : null;
+                        nextRefreshAt = DateTimeOffset.Now + GetRefreshInterval();
+                    }
+
                     continue;
                 }
 
@@ -161,7 +210,12 @@ internal sealed class InzoneBatteryService : IDisposable
                     throw new EndOfStreamException("The HID interface returned end-of-stream.");
                 }
 
-                ProcessReport(buffer.AsSpan(0, bytesRead), path, "interrupt");
+                var receivedBatteryReport = ProcessReport(buffer.AsSpan(0, bytesRead), path, "interrupt");
+                if (receivedBatteryReport && queryResponseDeadline is not null)
+                {
+                    MarkPeriodicRefreshSupported();
+                    queryResponseDeadline = null;
+                }
             }
         }
         catch (OperationCanceledException)
@@ -198,15 +252,15 @@ internal sealed class InzoneBatteryService : IDisposable
         }
     }
 
-    private void TryPeriodicRefresh(WindowsHidDevice device)
+    private async Task<bool> TryPeriodicRefreshAsync(
+        FileStream stream,
+        WindowsHidDevice device,
+        CancellationToken cancellationToken)
     {
         var attemptedAt = DateTimeOffset.Now;
-        if (!WindowsHid.TryGetInputReport(
-                device.DevicePath,
-                Math.Max(ExpectedReportLength, device.InputReportLength),
-                ReportId,
-                out var report,
-                out var errorCode))
+        var transactionId = AllocateTransactionId();
+        var report = BudsHciProtocol.BuildBatteryGetReport(device.OutputReportLength, transactionId);
+        if (report is null)
         {
             Volatile.Write(
                 ref _state,
@@ -216,26 +270,74 @@ internal sealed class InzoneBatteryService : IDisposable
                     PeriodicRefreshSupported = false,
                 });
 
-            if (_configuration.DebugLogging)
-            {
-                _log.Debug("Periodic HidD_GetInputReport was not supported (Win32 error {ErrorCode}).", errorCode);
-            }
-
-            return;
+            return false;
         }
 
-        var receivedBatteryReport = ProcessReport(report, device.DevicePath, "periodic control request");
-        Volatile.Write(
-            ref _state,
-            Current with
-            {
-                LastRefreshAttemptAt = attemptedAt,
-                PeriodicRefreshSupported = receivedBatteryReport,
-            });
-
-        if (!receivedBatteryReport && _configuration.DebugLogging)
+        try
         {
-            _log.Debug("Periodic HidD_GetInputReport returned a non-battery report; continuing the interrupt listener.");
+            await stream.WriteAsync(report.AsMemory(), cancellationToken).ConfigureAwait(false);
+            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+            Volatile.Write(
+                ref _state,
+                Current with
+                {
+                    LastRefreshAttemptAt = attemptedAt,
+                    PeriodicRefreshSupported = null,
+                });
+
+            if (_configuration.DebugLogging)
+            {
+                _log.Debug("Sent INZONE battery GET request with transaction ID {TransactionId}.", transactionId);
+            }
+
+            return true;
+        }
+        catch (ObjectDisposedException exception)
+        {
+            // RequestReconnect disposes the active stream to interrupt an outstanding read.
+            // If that races with this write, leave the current device loop through the same
+            // normal cancellation path instead of reporting a failed battery query.
+            throw new OperationCanceledException(
+                "The INZONE HID stream was disposed for reconnect.",
+                exception,
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            Volatile.Write(
+                ref _state,
+                Current with
+                {
+                    LastRefreshAttemptAt = attemptedAt,
+                    PeriodicRefreshSupported = false,
+                });
+            _log.Warning(exception, "Could not send the INZONE battery GET request.");
+            return false;
+        }
+    }
+
+    private ushort AllocateTransactionId()
+    {
+        var transactionId = _nextTransactionId++;
+        if (_nextTransactionId == 0)
+        {
+            _nextTransactionId = 1;
+        }
+
+        return transactionId;
+    }
+
+    private void MarkPeriodicRefreshSupported()
+    {
+        Volatile.Write(ref _state, Current with { PeriodicRefreshSupported = true });
+    }
+
+    private void MarkPeriodicRefreshUnsupported()
+    {
+        Volatile.Write(ref _state, Current with { PeriodicRefreshSupported = false });
+        if (_configuration.DebugLogging)
+        {
+            _log.Debug("INZONE battery GET request did not receive a battery response within {TimeoutSeconds} seconds.", QueryResponseTimeout.TotalSeconds);
         }
     }
 

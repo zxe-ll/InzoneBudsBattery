@@ -24,13 +24,13 @@ internal static class BatteryReportParser
             return false;
         }
 
-        var right = (int)report[14];
-        var left = (int)report[16];
-        var batteryCase = (int)report[18];
+        var leftRaw = report[14];
+        var rightRaw = report[16];
+        var caseRaw = report[18];
 
-        if (left > 100 || right > 100 || batteryCase > 100)
+        if (IsInvalidPercentage(leftRaw) || IsInvalidPercentage(rightRaw) || IsInvalidPercentage(caseRaw))
         {
-            validationError = $"Battery report has an out-of-range value: L={left}, R={right}, Case={batteryCase}.";
+            validationError = $"Battery report has an out-of-range value: L={leftRaw}, R={rightRaw}, Case={caseRaw}.";
             return false;
         }
 
@@ -45,11 +45,15 @@ internal static class BatteryReportParser
 
         var expectedChecksum = (byte)(checksumSum & 0xFF);
         batteryReport = new BatteryReport(
-            left,
-            right,
-            batteryCase,
+            ToPercentage(leftRaw),
+            ToPercentage(rightRaw),
+            ToPercentage(caseRaw),
             report[19] == expectedChecksum,
             receivedAt);
         return true;
     }
+
+    private static bool IsInvalidPercentage(byte value) => value > 100 && value != byte.MaxValue;
+
+    private static int? ToPercentage(byte value) => value == byte.MaxValue ? null : value;
 }
