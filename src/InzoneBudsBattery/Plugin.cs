@@ -96,10 +96,14 @@ public sealed class Plugin : IDalamudPlugin
 
         _pluginInterface.UiBuilder.DisableUserUiHide = _configuration.ShowWhenGameUiHidden;
 
+        var shouldTreatAsDisconnected = state.ShouldTreatAsDisconnected(
+            DateTimeOffset.Now,
+            TimeSpan.FromMinutes(_configuration.StaleAfterMinutes));
+
         var shouldShowOverlay = _configuration.OverlayEnabled
                                 && (_configuration.ShowInCombat || !_condition[ConditionFlag.InCombat])
                                 && (_configuration.ShowWhenGameUiHidden || _pluginInterface.UiBuilder.ShouldModifyUi)
-                                && (!_configuration.HideWhenDisconnected || state.IsTransmitterConnected);
+                                && (!_configuration.HideWhenDisconnected || !shouldTreatAsDisconnected);
         _overlayWindow.IsOpen = shouldShowOverlay;
         _windowSystem.Draw();
     }

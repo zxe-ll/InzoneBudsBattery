@@ -45,7 +45,6 @@ internal sealed class ConfigWindow : Window
         changed |= Checkbox("ケース残量を表示", nameof(Configuration.ShowCase));
         changed |= Checkbox("背景を表示", nameof(Configuration.ShowBackground));
         changed |= Checkbox("位置を固定", nameof(Configuration.LockPosition));
-        changed |= Checkbox("未接続時は非表示", nameof(Configuration.HideWhenDisconnected));
         changed |= Checkbox("最終更新時刻を表示", nameof(Configuration.ShowLastUpdated));
 
         var fontScale = _configuration.FontScale;
@@ -84,6 +83,11 @@ internal sealed class ConfigWindow : Window
         DrawSection("表示条件");
         changed |= Checkbox("戦闘中も表示", nameof(Configuration.ShowInCombat));
         changed |= Checkbox("FF14のUI非表示中も表示", nameof(Configuration.ShowWhenGameUiHidden));
+        changed |= Checkbox("未接続時は非表示", nameof(Configuration.HideWhenDisconnected));
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("トランシッター未接続、残量取得待ち、または古い値とみなす時間を超えた場合にオーバーレイを非表示にします。");
+        }
 
         var staleMinutes = _configuration.StaleAfterMinutes;
         if (ImGui.SliderInt("古い値とみなす時間（分）", ref staleMinutes, 1, 120))

@@ -73,8 +73,9 @@ internal sealed class OverlayWindow : Window
             return;
         }
 
-        var isStale = state.LastUpdatedAt is { } updatedAt
-                      && DateTimeOffset.Now - updatedAt >= TimeSpan.FromMinutes(_configuration.StaleAfterMinutes);
+        var isStale = state.IsStale(
+            DateTimeOffset.Now,
+            TimeSpan.FromMinutes(_configuration.StaleAfterMinutes));
         var color = GetBatteryColor(state.MinimumEarbudPercent, isStale);
 
         if (_configuration.DisplayMode == EarbudDisplayMode.Minimum)

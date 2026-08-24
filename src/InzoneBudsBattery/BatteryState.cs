@@ -29,4 +29,12 @@ public sealed record BatteryState
     public int? MinimumEarbudPercent => LeftPercent is { } left && RightPercent is { } right
         ? Math.Min(left, right)
         : LeftPercent ?? RightPercent;
+
+    public bool IsStale(DateTimeOffset now, TimeSpan staleAfter) =>
+        LastUpdatedAt is { } updatedAt && now - updatedAt >= staleAfter;
+
+    public bool ShouldTreatAsDisconnected(DateTimeOffset now, TimeSpan staleAfter) =>
+        !IsTransmitterConnected
+        || !HasReceivedBatteryReport
+        || IsStale(now, staleAfter);
 }
