@@ -1,0 +1,26 @@
+[
+  {
+    "Author": "zxe-ll",
+    "Name": "INZONE Buds Battery",
+    "Punchline": "INZONE Budsの左右・ケース残量をゲーム内に表示します。",
+    "Description": "Sony INZONE Buds（WF-G700N）のUSBトランシッターからバッテリー残量を取得し、オーバーレイとDTRバーへ表示します。",
+    "IconUrl": "https://raw.githubusercontent.com/zxe-ll/InzoneBudsBattery/main/images/icon.png",
+    "InternalName": "InzoneBudsBattery",
+    "AssemblyVersion": "0.2.4.0",
+    "LastUpdate": 1784413564,
+    "RepoUrl": "https://github.com/zxe-ll/InzoneBudsBattery",
+    "ApplicableVersion": "any",
+    "Tags": [
+      "battery",
+      "hardware",
+      "inzone",
+      "sony"
+    ],
+    "DalamudApiLevel": 15,
+    "DownloadLinkInstall": "https://github.com/zxe-ll/InzoneBudsBattery/releases/download/v0.2.4/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/zxe-ll/InzoneBudsBattery/releases/download/v0.2.4/latest.zip",
+    "DownloadLinkTesting": "https://github.com/zxe-ll/InzoneBudsBattery/releases/download/v0.2.4/latest.zip",
+    "IsHide": false,
+    "IsTestingExclusive": false
+  }
+]

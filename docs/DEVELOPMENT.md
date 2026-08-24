@@ -26,6 +26,13 @@ src\InzoneBudsBattery\bin\Release\InzoneBudsBattery\latest.zip
 
 `Dalamud.NET.Sdk 15.0.0`がmanifestと配布ZIPを生成します。プラグインはWindowsのSetupAPI／HID APIを直接使用するため、外部HID DLLは同梱しません。
 
+カスタムリポジトリ定義と配布ZIPの整合性は次のコマンドで確認できます。
+
+```powershell
+.\scripts\Test-PluginRepository.ps1 `
+  -PackagePath .\src\InzoneBudsBattery\bin\Release\InzoneBudsBattery\latest.zip
+```
+
 ## Dev Pluginとして読み込む
 
 1. FF14をXIVLauncherから起動する。
@@ -35,6 +42,24 @@ src\InzoneBudsBattery\bin\Release\InzoneBudsBattery\latest.zip
 5. `/inzone`で設定画面を開く。
 
 再ビルド前にはDalamud上でプラグインをアンロードしてください。実行中のDLLや配布フォルダーがロックされていると、DalamudPackagerが既存ファイルを更新できない場合があります。
+
+## カスタムリポジトリのリリース
+
+`pluginmaster.json`はGitHub Releaseの`latest.zip`を参照します。新しいバージョンを公開するときは、次の4項目を同じバージョンへ更新してください。
+
+- `src/InzoneBudsBattery/InzoneBudsBattery.csproj`の`AssemblyVersion`と`FileVersion`
+- `pluginmaster.json`の`AssemblyVersion`
+- `pluginmaster.json`の3つのダウンロードURLに含まれるタグ
+- `pluginmaster.json`の`LastUpdate`（UTCのUnix秒）
+
+変更を`main`へ反映した後、対応するタグをpushします。たとえば`AssemblyVersion`が`0.2.5.0`ならタグは`v0.2.5`です。
+
+```powershell
+git tag v0.2.5
+git push origin v0.2.5
+```
+
+タグのpushにより`.github/workflows/release.yml`がReleaseビルドを実行し、生成した`latest.zip`を同名のGitHub Releaseへ添付します。タグ、プロジェクト、`pluginmaster.json`のバージョンやURLが一致しない場合は公開前に失敗します。
 
 ## 実装の要点
 

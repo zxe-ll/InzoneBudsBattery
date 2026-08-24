@@ -28,15 +28,18 @@ USBトランシッターへWindowsのSetupAPI／HID APIで直接アクセスし�
 
 ## インストール
 
-現時点ではDalamudのDev Pluginとして使用します。
+Dalamudのカスタムプラグインリポジトリからインストールできます。
 
-1. [Releases](../../releases)から`latest.zip`を取得して展開する。
-2. Dalamud設定の`Experimental`を開く。
-3. `Dev Plugin Locations`へ展開した`InzoneBudsBattery.dll`を追加する。
-4. Dev Plugins画面から`INZONE Buds Battery`を読み込む。
-5. ゲーム内で`/inzone`を実行して設定画面を開く。
+```text
+https://raw.githubusercontent.com/zxe-ll/InzoneBudsBattery/main/pluginmaster.json
+```
 
-GitHub Releaseをまだ作成していない場合は、ソースからビルドしてください。詳しくは[開発ガイド](docs/DEVELOPMENT.md)を参照してください。
+1. Dalamud設定（`/xlsettings`）の`試験的機能`（Experimental）を開く。
+2. `カスタムプラグインリポジトリ`（Custom Plugin Repositories）へ上記URLを追加し、有効にする。
+3. プラグイン一覧（`/xlplugins`）で`INZONE Buds Battery`を検索してインストールする。
+4. ゲーム内で`/inzone`を実行して設定画面を開く。
+
+開発中のローカルビルドを読み込む方法は[開発ガイド](docs/DEVELOPMENT.md)を参照してください。
 
 ## コマンド
 
