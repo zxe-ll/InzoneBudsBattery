@@ -96,6 +96,11 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
 
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("この時間を超えた場合、未接続と判断します");
+        }
+
         var refreshMinutes = _configuration.RefreshIntervalMinutes;
         if (ImGui.SliderInt("定期更新の試行間隔（分）", ref refreshMinutes, 1, 30))
         {

@@ -116,14 +116,23 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
+        var hasCurrentBatteryReport = state.HasReceivedBatteryReport
+                                      && !state.IsStale(
+                                          DateTimeOffset.Now,
+                                          TimeSpan.FromMinutes(_configuration.StaleAfterMinutes));
+        var leftPercent = hasCurrentBatteryReport ? state.LeftPercent : null;
+        var rightPercent = hasCurrentBatteryReport ? state.RightPercent : null;
+        var casePercent = hasCurrentBatteryReport ? state.CasePercent : null;
+        var minimumEarbudPercent = hasCurrentBatteryReport ? state.MinimumEarbudPercent : null;
+
         _dtrEntry.Text = _configuration.DtrShowDetails
-            ? $"L{FormatCompact(state.LeftPercent)} R{FormatCompact(state.RightPercent)} C{FormatCompact(state.CasePercent)}"
-            : state.MinimumEarbudPercent is { } minimum
+            ? $"L{FormatCompact(leftPercent)} R{FormatCompact(rightPercent)} C{FormatCompact(casePercent)}"
+            : minimumEarbudPercent is { } minimum
                 ? $"INZONE {minimum}%"
                 : "INZONE --";
 
         _dtrEntry.Tooltip = state.IsTransmitterConnected
-            ? state.HasReceivedBatteryReport
+            ? hasCurrentBatteryReport
                 ? $"INZONE Buds\nL {Format(state.LeftPercent)}  R {Format(state.RightPercent)}\nCase {Format(state.CasePercent)}"
                 : "INZONE Buds\n残量取得待ち..."
             : "INZONE Buds\n未接続";
