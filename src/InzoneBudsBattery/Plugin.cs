@@ -17,6 +17,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ICommandManager _commandManager;
     private readonly IPluginLog _log;
     private readonly ICondition _condition;
+    private readonly IGameGui _gameGui;
     private readonly INotificationManager _notificationManager;
     private readonly IDtrBar _dtrBar;
     private readonly IDtrBarEntry _dtrEntry;
@@ -32,6 +33,7 @@ public sealed class Plugin : IDalamudPlugin
         ICommandManager commandManager,
         IPluginLog log,
         ICondition condition,
+        IGameGui gameGui,
         INotificationManager notificationManager,
         IDtrBar dtrBar)
     {
@@ -39,6 +41,7 @@ public sealed class Plugin : IDalamudPlugin
         _commandManager = commandManager;
         _log = log;
         _condition = condition;
+        _gameGui = gameGui;
         _notificationManager = notificationManager;
         _dtrBar = dtrBar;
 
@@ -102,7 +105,7 @@ public sealed class Plugin : IDalamudPlugin
 
         var shouldShowOverlay = _configuration.OverlayEnabled
                                 && (_configuration.ShowInCombat || !_condition[ConditionFlag.InCombat])
-                                && (_configuration.ShowWhenGameUiHidden || _pluginInterface.UiBuilder.ShouldModifyUi)
+                                && (_configuration.ShowWhenGameUiHidden || !_gameGui.GameUiHidden)
                                 && (!_configuration.HideWhenDisconnected || !shouldTreatAsDisconnected);
         _overlayWindow.IsOpen = shouldShowOverlay;
         _windowSystem.Draw();
